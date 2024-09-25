@@ -8,6 +8,7 @@ const bodyParser = require('body-parser');
 const options = {
   all:true,
 };
+let url_list = [];
 
 //
 const query_regex = /^(https?:\/\/)/gmi
@@ -37,11 +38,20 @@ app.route('/api/shorturl').post((req,res) => {
   if (query_regex.test(req.body.url)) {
     let query = req.body.url.replace(query_regex, "")
     dns.lookup(query, (error,addresses) => {
-      console.log(`${req.body.url} = ${query} = error: ${error}, address: ${addresses}`)
       if (error !== null) {
        res.json({'error':'invalid url'})
       } else {
-        res.json({'no':'error'})
+        let obj = url_list.find(x => x.original_url === req.body.url)
+        // if link does exist in list, show relevant JSON obj:
+        if (obj) {
+          console.log(`${obj.original_url}:${obj.short_url} found`)
+          res.json(obj)
+        // else add it to list and show JSON obj
+        } else {
+          url_list.push({'original_url':req.body.url,'short_url':url_list.length+1})
+          console.log(`${req.body.url} added to list`)
+          res.json(url_list[url_list.length-1])
+        } 
       }
     });
   } else {
