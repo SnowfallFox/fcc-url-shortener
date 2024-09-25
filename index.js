@@ -49,9 +49,12 @@ app.post('/api/shorturl', (req,res) => {
   // console.log(req.body.url)
   if (query_regex.test(req.body.url)) {
     let query = req.body.url.replace(query_regex, "")
+    if (query.slice(-1) == '/') {
+      query = query.slice(0,-1)
+    }
     dns.lookup(query, (error,addresses) => {
       if (error !== null) {
-       res.json({'error':'invalid url'})
+       res.json({'error':error})
       } else {
         let obj = url_list.find(x => x.original_url === req.body.url)
         // if link does exist in list, show relevant JSON obj:
