@@ -38,14 +38,14 @@ app.get('/api/shorturl/:q', (req,res) => {
   // res.json({'query':req.params.q})
   let obj = url_list.find(x => x.short_url === Number(req.params.q))
   if (obj) {
-    res.redirect(obj.original_url.toString())
+    res.redirect(obj.original_url)
   } else {
     res.json({'error':'invalid url'})
   }
 })
 
 //
-app.route('/api/shorturl/').post((req,res) => {
+app.post('/api/shorturl', (req,res) => {
   // console.log(req.body.url)
   if (query_regex.test(req.body.url)) {
     let query = req.body.url.replace(query_regex, "")
