@@ -12,8 +12,8 @@ const options = {
 };
 let url_list = [];
 
-//
-const query_regex = /^(https?:\/\/)/gmi;
+// regex pattern credit goes to user 'skaparate' on freeCodeCamp forums: https://forum.freecodecamp.org/t/url-shortener-microservice-submission-failing/491503
+const query_regex = /(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/gmi;
 
 // Basic Configuration
 const port = process.env.PORT || 3000;
