@@ -3,18 +3,40 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 //
+const mongoose = require('mongoose');
 const dns = require('dns');
 const bodyParser = require('body-parser');
+const { doesNotMatch } = require('assert');
 const options = {
   all:true,
 };
 let url_list = [];
 
 //
-const query_regex = /^(https?:\/\/)/gmi
+const query_regex = /^(https?:\/\/)/gmi;
 
 // Basic Configuration
 const port = process.env.PORT || 3000;
+
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+
+const urlSchema = new mongoose.Schema({
+  original_url: String,
+  short_url: Number
+});
+
+let URL = mongoose.model("URL", urlSchema);
+
+let dbCount = 0;
+let query = URL.find(); 
+query.countDocuments(function (err, count) { 
+    if (err) {
+      console.log(err)
+    } else {
+      // console.log("Count is", count)
+      dbCount = count;
+    }
+}); 
 
 app.use(cors());
 
@@ -35,38 +57,54 @@ app.get('/api/hello', function(req, res) {
 //
 // GET requests may not work correctly in some browsers due to security
 app.get('/api/shorturl/:q', (req,res) => {
-  // res.json({'query':req.params.q})
-  let obj = url_list.find(x => x.short_url === Number(req.params.q))
-  if (obj) {
-    res.redirect(obj.original_url)
-  } else {
-    res.json({'error':'invalid url'})
-  }
+  URL.find({short_url:req.params.q}, (err,data) => {
+    if (err) {
+      console.log({'error':'invalid url'})
+    } else {
+      // console.log(data)
+      res.redirect(data[0].original_url)
+    }
+  })
 })
 
 //
 app.post('/api/shorturl', (req,res) => {
   // console.log(req.body.url)
   if (query_regex.test(req.body.url)) {
+    // console.log('test passed')
     let query = req.body.url.replace(query_regex, "")
     if (query.slice(-1) == '/') {
       query = query.slice(0,-1)
     }
     dns.lookup(query, (error,addresses) => {
-      if (error !== null) {
-       res.json({'error':error})
+      if (error) {
+        res.json({'error':'invalid url'})
       } else {
-        let obj = url_list.find(x => x.original_url === req.body.url)
-        // if link does exist in list, show relevant JSON obj:
-        if (obj) {
-          console.log(`${obj.original_url}:${obj.short_url} found`)
-          res.json(obj)
-        // else add it to list and show JSON obj
-        } else {
-          url_list.push({'original_url':req.body.url,'short_url':url_list.length+1})
-          console.log(`${req.body.url} added to list`)
-          res.json(url_list[url_list.length-1])
-        } 
+        // check db for link
+        URL.find({original_url:req.body.url}, (err,data) => {
+          if (err) {
+            console.log(err)
+          } else {
+            console.log(data)
+            // if submitted already, res.json with relevant link and short url
+            if (data.length > 0) {
+              res.json({'original_url':data[0].original_url, 'short_url':data[0].short_url})
+            // if not submitted, submit link and short_url (dbCount+1) to db and log action to console
+            } else {
+              // res.json({'error':'no data'})
+              let newURL = new URL({original_url:req.body.url,short_url:dbCount+1})
+              newURL.save((err,data) => {
+                if (err) return console.log(err);
+              })
+              console.log(`-- added {original_url:${req.body.url},short_url:${dbCount+1}} to db --`)
+              // increment dbCount and log addition to console({orig:link, short:Number})
+              dbCount = dbCount+1
+              console.log(`-- dbCount now equals ${dbCount} --`)
+              // res.json with searched link and short_url
+              res.json({'original_url':req.body.url,'short_url':dbCount})
+            }
+          }
+        })
       }
     });
   } else {
